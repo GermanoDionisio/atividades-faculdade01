@@ -1,0 +1,53 @@
+llm_config = {
+    "config_list": config_list,
+    "timeout": 120
+}
+
+#agente que efetua conversão de moeda
+currency_bot = autogen.AssistantAgent(
+    name="currency_bot",
+    system_message="Para tarefas relacionadas com agendamento de reuniões, use apenas as funções que você recebeu. Responda TERMINATE "
+                   "quando a tarefa estiver concluída.",
+    llm_config=llm_config
+)
+
+#agente user proxy
+user_proxy = autogen.UserProxyAgent(
+    name="user_proxy",
+    is_termination_msg=lambda x: x.get("content", "") and x.get("content", "").rstrip().endswith("TERMINATE"),
+    human_input_mode="NEVER",
+    max_consecutive_auto_reply=1,
+    code_execution_config=False
+)
+
+EnviromentSymbol = Literal["escritório", "garagem", "jardim"]
+
+# Função para tocar música em um ambiente
+#registrando a ferramenta
+@user_proxy.register_for_execution()
+# Register the tool signature with the assistant agent.
+@currency_bot.register_for_llm(description="Toca uma música em algum ambiente")
+def def play_music(
+    ambiente: Annotated[EnviromentSymbol, "Ambiente onde a música será tocada"],
+    musica: Annotated[str, "Nome da música para tocar"]
+) -> str:
+    return f"Tocando '{musica}' no {ambiente}"
+
+# Função para ajustar o volume da música
+@user_proxy.register_for_execution()
+@music_bot.register_for_llm(description="Ajusta o volume da música em algum ambiente")
+def set_volume(
+    ambiente: Annotated[EnviromentSymbol, "Ambiente onde o volume será ajustado"],
+    volume: Annotated[int, "Volume desejado, de 0 a 100"]
+) -> str:
+    return f"Volume ajustado para {volume}% no {ambiente}"
+
+
+#######################################
+#inicialização da conversa
+user_proxy.initiate_chat(
+    music_bot,
+    message="E ai, truta! Está animado? Quero tocar uma música no escritório"
+)
+
+
